@@ -110,31 +110,35 @@ class Trainer:
                     **kwargs,
                 )
                 self.loss = BarlowTwinsLoss(**kwargs)
-                self.transformation = SimCLRViewTransform(
+                self.transformation = BarlowTwinsTransform(
                     image_size=self.image_size, **kwargs
                 )
-                self.transformation_prime = self.transformation
+                self.transformation_prime = BarlowTwinsPrimeTransform(
+                    image_size=self.image_size, **kwargs
+                )
                 if self.verbose:
                     print(f"Projection Dimension: {self.model.projection_dim}")
                     print(f"Projection Hidden Dimension: {self.model.hidden_dim}")
                     print("Loss: BarlowTwins Loss")
-                    print("Transformation: SimCLRViewTransform")
-                    print("Transformation prime: SimCLRViewTransform")
+                    print("Transformation: BarlowTwinsTransform")
+                    print("Transformation prime: BarlowTwinsPrimeTransform")
 
             case "byol":
                 self.model = BYOL(self.backbone, self.feature_size, **kwargs)
-                self.transformation = SimCLRViewTransform(
+                self.transformation = BYOLTransform(
                     image_size=self.image_size, **kwargs
                 )
-                self.transformation_prime = self.transformation
+                self.transformation_prime = BYOLPrimeTransform(
+                    image_size=self.image_size, **kwargs
+                )
                 self.loss = BYOLLoss(**kwargs)
                 if self.verbose:
                     print(f"Projection Dimension: {self.model.projection_dim}")
                     print(f"Projection Hidden Dimension: {self.model.hidden_dim}")
                     print(f"Moving average decay: {self.model.moving_average_decay}")
                     print("Loss: BYOL Loss")
-                    print("Transformation: SimCLRViewTransform")
-                    print("Transformation prime: SimCLRViewTransform")
+                    print("Transformation: BYOLTransform")
+                    print("Transformation prime: BYOLPrimeTransform")
 
             case "dino":
                 self.model = DINO(self.backbone, self.feature_size, **kwargs)
@@ -144,11 +148,15 @@ class Trainer:
                     self.model.temp_teacher,
                     **kwargs,
                 )
-                self.transformation_global1 = SimCLRViewTransform(
+                self.transformation_global1 = DINOGlobalTransform1(
                     image_size=self.image_size, **kwargs
                 )
-                self.transformation_global2 = self.transformation_global1
-                self.transformation_local = self.transformation_global1
+                self.transformation_global2 = DINOGlobalTransform2(
+                    image_size=self.image_size, **kwargs
+                )
+                self.transformation_local = DINOLocalTransform(
+                    image_size=self.image_size, **kwargs
+                )
                 if self.verbose:
                     print(f"Projection Dimension: {self.model.projection_dim}")
                     print(f"Projection Hidden Dimension: {self.model.hidden_dim}")
@@ -163,35 +171,39 @@ class Trainer:
                         f"Using batch normalization in projection head: {self.model.use_bn_in_head}"
                     )
                     print("Loss: DINO Loss")
-                    print("Transformation global_1: SimCLRViewTransform")
-                    print("Transformation global_2: SimCLRViewTransform")
-                    print("Transformation local: SimCLRViewTransform")
+                    print("Transformation global_1: DINOGlobalTransform1")
+                    print("Transformation global_2: DINOGlobalTransform2")
+                    print("Transformation local: DINOLocalTransform")
             case "mocov2":
                 self.model = MoCoV2(self.backbone, self.feature_size, **kwargs)
                 self.loss = nn.CrossEntropyLoss()
                 self.transformation = SimCLRViewTransform(
-                    image_size=self.image_size, **kwargs
+                    image_size=self.image_size, color_jitter_strength=0.5, **kwargs
                 )
                 if self.verbose:
                     print(f"Projection Dimension: {self.model.projection_dim}")
                     print(f"Number of negative keys: {self.model.K}")
                     print(f"Momentum for updating the key encoder: {self.model.m}")
                     print("Loss: InfoNCE Loss")
-                    print("Transformation: SimCLRViewTransform")
+                    print(
+                        "Transformation: SimCLRViewTransform (color_jitter_strength: 0.5)"
+                    )
             case "mocov3":
                 self.model = MoCov3(self.backbone, self.feature_size, **kwargs)
                 self.loss = InfoNCE_MoCoV3(**kwargs)
-                self.transformation = SimCLRViewTransform(
+                self.transformation = MoCoV3Transform(
                     image_size=self.image_size, **kwargs
                 )
-                self.transformation_prime = self.transformation
+                self.transformation_prime = MoCoV3PrimeTransform(
+                    image_size=self.image_size, **kwargs
+                )
                 if self.verbose:
                     print(f"Projection Dimension: {self.model.projection_dim}")
                     print(f"Projection Hidden Dimension: {self.model.hidden_dim}")
                     print(f"Moving average decay: {self.model.moving_average_decay}")
                     print("Loss: InfoNCE Loss")
-                    print("Transformation: SimCLRViewTransform")
-                    print("Transformation prime: SimCLRViewTransform")
+                    print("Transformation: MoCoV3Transform")
+                    print("Transformation prime: MoCoV3PrimeTransform")
 
             case "simclr":
                 self.model = SimCLR(self.backbone, self.feature_size, **kwargs)
@@ -219,7 +231,7 @@ class Trainer:
                 )
                 self.loss = NegativeCosineSimilarity(**kwargs)
                 self.transformation = SimCLRViewTransform(
-                    image_size=self.image_size, **kwargs
+                    image_size=self.image_size, color_jitter_strength=0.5, **kwargs
                 )
                 if self.verbose:
                     print(f"Projection Dimension: {self.model.projection_dim}")
@@ -230,21 +242,25 @@ class Trainer:
                         f"Prediction Hidden Dimension: {self.model.prediction_hidden_dim}"
                     )
                     print("Loss: Negative Cosine Simililarity")
-                    print("Transformation: SimCLRViewTransform")
+                    print(
+                        "Transformation: SimCLRViewTransform (color_jitter_strength: 0.5)"
+                    )
             case "swav":
                 self.model = SwAV(self.backbone, self.feature_size, **kwargs)
                 self.loss = SwAVLoss(self.model.num_crops + 2, **kwargs)
-                self.transformation_global = SimCLRViewTransform(
+                self.transformation_global = SwAVGlobalTransform(
                     image_size=self.image_size, **kwargs
                 )
-                self.transformation_local = self.transformation_global
+                self.transformation_local = SwAVLocalTransform(
+                    image_size=self.image_size, **kwargs
+                )
                 if self.verbose:
                     print(f"Projection Dimension: {self.model.projection_dim}")
                     print(f"Projection Hidden Dimension: {self.model.hidden_dim}")
                     print(f"Number of crops: {self.model.num_crops}")
                     print("Loss: SwAV Loss")
-                    print("Transformation global: SimCLRViewTransform")
-                    print("Transformation local: SimCLRViewTransform")
+                    print("Transformation global: SwAVGlobalTransform")
+                    print("Transformation local: SwAVLocalTransform")
 
             case _:
                 raise ValueError(f"Method {self.method} not supported")
